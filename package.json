@@ -1,0 +1,16 @@
+{
+  "name": "backend-products",
+  "version": "1.0.0",
+  "description": "Servidor Express para gestión de productos",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
