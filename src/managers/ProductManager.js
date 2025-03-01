@@ -11,7 +11,8 @@ class ProductManager {
     async initialize() {
         try {
             const data = await fs.readFile(this.path, 'utf-8');
-            this.products = JSON.parse(data);
+            const fileContent = JSON.parse(data);
+            this.products = fileContent.products || [];
             if (this.products.length > 0) {
                 this.nextId = Math.max(...this.products.map(p => p.id)) + 1;
             }
@@ -22,37 +23,26 @@ class ProductManager {
     }
 
     async saveToFile() {
-        await fs.writeFile(this.path, JSON.stringify(this.products, null, 2));
+        await fs.writeFile(this.path, JSON.stringify({ products: this.products }, null, 2));
     }
 
     async addProduct(productData) {
-        const { title, description, code, price, stock, category, thumbnails = [], status = true } = productData;
+        const { title, description, price, stock, category } = productData;
 
-        // Validar campos obligatorios
-        if (!title || !description || !code || !price || !stock || !category) {
-            throw new Error("Todos los campos son obligatorios excepto thumbnails y status");
+        if (!title || !description || !price || !stock || !category) {
+            throw new Error("Todos los campos son obligatorios");
         }
 
-        // Validar que no se repita el código
-        if (this.products.some(product => product.code === code)) {
-            throw new Error("El código del producto ya existe");
-        }
-
-        // Crear el nuevo producto
         const newProduct = {
-            id: this.nextId,
+            id: this.nextId++,
             title,
             description,
-            code,
-            price,
-            status,
-            stock,
-            category,
-            thumbnails
+            price: Number(price),
+            stock: Number(stock),
+            category
         };
 
         this.products.push(newProduct);
-        this.nextId++;
         await this.saveToFile();
         return newProduct;
     }
@@ -60,39 +50,28 @@ class ProductManager {
     async getProducts() {
         try {
             const data = await fs.readFile(this.path, 'utf-8');
-            return JSON.parse(data);
+            const fileContent = JSON.parse(data);
+            return fileContent.products || [];
         } catch (error) {
             return [];
         }
     }
 
     async getProductById(id) {
-        try {
-            const data = await fs.readFile(this.path, 'utf-8');
-            const products = JSON.parse(data);
-            const product = products.find(product => product.id === id);
-            
-            if (!product) {
-                throw new Error("Producto no encontrado");
-            }
-            return product;
-        } catch (error) {
-            throw error;
+        const product = this.products.find(p => p.id === id);
+        if (!product) {
+            throw new Error("Producto no encontrado");
         }
+        return product;
     }
 
     async updateProduct(id, updateData) {
-        const products = await this.getProducts();
-        const index = products.findIndex(p => p.id === id);
-        
+        const index = this.products.findIndex(p => p.id === id);
         if (index === -1) {
             throw new Error("Producto no encontrado");
         }
 
-        // Evitar actualización del ID
         const { id: _, ...updateFields } = updateData;
-        
-        // Actualizar el producto
         this.products[index] = {
             ...this.products[index],
             ...updateFields
@@ -103,9 +82,7 @@ class ProductManager {
     }
 
     async deleteProduct(id) {
-        const products = await this.getProducts();
-        const index = products.findIndex(p => p.id === id);
-        
+        const index = this.products.findIndex(p => p.id === Number(id));
         if (index === -1) {
             throw new Error("Producto no encontrado");
         }

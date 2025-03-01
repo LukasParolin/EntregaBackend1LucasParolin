@@ -1,1 +1,44 @@
-[]
+{
+    "products": [
+        {
+            "id": 1,
+            "title": "MacBook Pro M2",
+            "description": "Laptop Apple con chip M2, 16GB RAM, 512GB SSD",
+            "price": 1299.99,
+            "category": "Tecnología",
+            "stock": 15
+        },
+        {
+            "id": 2,
+            "title": "Zapatillas Nike Air Max",
+            "description": "Zapatillas deportivas con tecnología Air, color negro",
+            "price": 129.99,
+            "category": "Deportes",
+            "stock": 25
+        },
+        {
+            "id": 3,
+            "title": "Set de Sartenes Antiadherentes",
+            "description": "Juego de 3 sartenes con recubrimiento antiadherente",
+            "price": 79.99,
+            "category": "Hogar",
+            "stock": 30
+        },
+        {
+            "id": 4,
+            "title": "PlayStation 5",
+            "description": "Consola de videojuegos última generación, 1TB",
+            "price": 499.99,
+            "category": "Gaming",
+            "stock": 10
+        },
+        {
+            "id": 5,
+            "title": "Café Orgánico Premium",
+            "description": "Café en grano de origen colombiano, 1kg",
+            "price": 24.99,
+            "category": "Alimentos",
+            "stock": 50
+        }
+    ]
+}
