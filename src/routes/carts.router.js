@@ -2,65 +2,82 @@ const express = require('express');
 const router = express.Router();
 
 // Importamos los managers que vamos a usar
-const CartManager = require('../managers/CartManager.js');
+const CartManager = require('../managers/CartManager');
 const ProductManager = require('../managers/ProductManager.js');
+const { getCartView } = require('../controllers/cart.controller');
 
 // Creamos las instancias necesarias
-const cartsManager = new CartManager('./data/carts.json');
-const productsManager = new ProductManager('./data/products.json');
+const cartManager = new CartManager();
+const productManager = new ProductManager();
 
 // Crear carrito nuevo
 router.post('/', async (req, res) => {
     try {
-        const carritoNuevo = await cartsManager.createCart();
-        res.status(201).json({ 
-            mensaje: 'Carrito creado con éxito',
-            carrito: carritoNuevo 
-        });
+        const newCart = await cartManager.createCart();
+        res.status(201).json(newCart);
     } catch (error) {
-        console.log('Error al crear carrito:', error);
-        res.status(500).json({ error: 'No se pudo crear el carrito' });
+        res.status(400).json({ error: error.message });
     }
 });
 
 // Ver un carrito
-router.get('/:cid', async (req, res) => {
-    try {
-        const id = parseInt(req.params.cid);
-        const carrito = await cartsManager.getCartById(id);
-        
-        if (!carrito) {
-            return res.status(404).json({ error: 'Carrito no encontrado' });
-        }
+router.get('/:cid', getCartView);
 
-        res.json({ carrito });
+// Agregar producto al carrito
+router.post('/:cid/products/:pid', async (req, res) => {
+    try {
+        const { quantity = 1 } = req.body;
+        const cart = await cartManager.addProductToCart(
+            req.params.cid,
+            req.params.pid,
+            parseInt(quantity)
+        );
+        res.json(cart);
     } catch (error) {
-        console.log('Error al obtener carrito:', error);
-        res.status(500).json({ error: 'Error al obtener el carrito' });
+        res.status(400).json({ error: error.message });
     }
 });
 
-// Agregar producto al carrito
-router.post('/:cid/product/:pid', async (req, res) => {
+router.put('/:cid', async (req, res) => {
     try {
-        const carritoId = parseInt(req.params.cid);
-        const productoId = parseInt(req.params.pid);
-        
-        // Primero verificamos que exista el producto
-        const producto = await productsManager.getProductById(productoId);
-        if (!producto) {
-            return res.status(404).json({ error: 'Producto no encontrado' });
-        }
-        
-        // Si existe el producto, lo agregamos al carrito
-        const carritoActualizado = await cartsManager.addProductToCart(carritoId, productoId);
-        
-        res.json({ 
-            mensaje: 'Producto agregado al carrito con éxito',
-            carrito: carritoActualizado 
-        });
+        const cart = await cartManager.updateCartProducts(req.params.cid, req.body);
+        res.json(cart);
     } catch (error) {
-        console.log('Error al agregar producto al carrito:', error);
+        res.status(400).json({ error: error.message });
+    }
+});
+
+router.put('/:cid/products/:pid', async (req, res) => {
+    try {
+        const { quantity } = req.body;
+        const cart = await cartManager.updateProductQuantity(
+            req.params.cid,
+            req.params.pid,
+            parseInt(quantity)
+        );
+        res.json(cart);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+router.delete('/:cid/products/:pid', async (req, res) => {
+    try {
+        const cart = await cartManager.removeProductFromCart(
+            req.params.cid,
+            req.params.pid
+        );
+        res.json(cart);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+router.delete('/:cid', async (req, res) => {
+    try {
+        const cart = await cartManager.clearCart(req.params.cid);
+        res.json(cart);
+    } catch (error) {
         res.status(400).json({ error: error.message });
     }
 });

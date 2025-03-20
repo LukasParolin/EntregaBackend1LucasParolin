@@ -1,94 +1,92 @@
-const fs = require('fs').promises;
+const Product = require('../models/Product');
 
 class ProductManager {
-    constructor(path) {
-        this.path = path;
-        this.products = [];
-        this.nextId = 1; // Para manejar el id autoincrementable
-        this.initialize();
-    }
-
-    async initialize() {
+    async getProducts({ limit = 10, page = 1, sort, query } = {}) {
         try {
-            const data = await fs.readFile(this.path, 'utf-8');
-            const fileContent = JSON.parse(data);
-            this.products = fileContent.products || [];
-            if (this.products.length > 0) {
-                this.nextId = Math.max(...this.products.map(p => p.id)) + 1;
+            const options = {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                sort: sort === 'desc' ? { price: -1 } : sort === 'asc' ? { price: 1 } : undefined
+            };
+
+            const filter = {};
+            if (query) {
+                filter.category = query;
             }
+
+            const result = await Product.paginate(filter, options);
+
+            const baseUrl = '/api/products';
+            const totalPages = result.totalPages;
+            const prevPage = result.prevPage;
+            const nextPage = result.nextPage;
+            const currentPage = result.page;
+            const hasPrevPage = result.hasPrevPage;
+            const hasNextPage = result.hasNextPage;
+            const prevLink = hasPrevPage ? `${baseUrl}?page=${prevPage}&limit=${limit}${sort ? `&sort=${sort}` : ''}${query ? `&query=${query}` : ''}` : null;
+            const nextLink = hasNextPage ? `${baseUrl}?page=${nextPage}&limit=${limit}${sort ? `&sort=${sort}` : ''}${query ? `&query=${query}` : ''}` : null;
+
+            return {
+                status: 'success',
+                payload: result.docs,
+                totalPages,
+                prevPage,
+                nextPage,
+                page: currentPage,
+                hasPrevPage,
+                hasNextPage,
+                prevLink,
+                nextLink
+            };
         } catch (error) {
-            // Si el archivo no existe, se creará al guardar el primer producto
-            this.products = [];
-        }
-    }
-
-    async saveToFile() {
-        await fs.writeFile(this.path, JSON.stringify({ products: this.products }, null, 2));
-    }
-
-    async addProduct(productData) {
-        const { title, description, price, stock, category } = productData;
-
-        if (!title || !description || !price || !stock || !category) {
-            throw new Error("Todos los campos son obligatorios");
-        }
-
-        const newProduct = {
-            id: this.nextId++,
-            title,
-            description,
-            price: Number(price),
-            stock: Number(stock),
-            category
-        };
-
-        this.products.push(newProduct);
-        await this.saveToFile();
-        return newProduct;
-    }
-
-    async getProducts() {
-        try {
-            const data = await fs.readFile(this.path, 'utf-8');
-            const fileContent = JSON.parse(data);
-            return fileContent.products || [];
-        } catch (error) {
-            return [];
+            throw new Error('Error al obtener productos');
         }
     }
 
     async getProductById(id) {
-        const product = this.products.find(p => p.id === id);
-        if (!product) {
-            throw new Error("Producto no encontrado");
+        try {
+            const product = await Product.findById(id);
+            if (!product) {
+                throw new Error('Producto no encontrado');
+            }
+            return product;
+        } catch (error) {
+            throw new Error('Error al obtener el producto');
         }
-        return product;
     }
 
-    async updateProduct(id, updateData) {
-        const index = this.products.findIndex(p => p.id === id);
-        if (index === -1) {
-            throw new Error("Producto no encontrado");
+    async addProduct(productData) {
+        try {
+            const product = new Product(productData);
+            await product.save();
+            return product;
+        } catch (error) {
+            throw new Error('Error al agregar el producto');
         }
+    }
 
-        const { id: _, ...updateFields } = updateData;
-        this.products[index] = {
-            ...this.products[index],
-            ...updateFields
-        };
-
-        await this.saveToFile();
-        return this.products[index];
+    async updateProduct(id, productData) {
+        try {
+            const product = await Product.findByIdAndUpdate(id, productData, { new: true });
+            if (!product) {
+                throw new Error('Producto no encontrado');
+            }
+            return product;
+        } catch (error) {
+            throw new Error('Error al actualizar el producto');
+        }
     }
 
     async deleteProduct(id) {
-        const index = this.products.findIndex(p => p.id === Number(id));
-        if (index === -1) {
-            throw new Error("Producto no encontrado");
+        try {
+            const product = await Product.findByIdAndDelete(id);
+            if (!product) {
+                throw new Error('Producto no encontrado');
+            }
+            return product;
+        } catch (error) {
+            throw new Error('Error al eliminar el producto');
         }
-
-        this.products.splice(index, 1);
-        await this.saveToFile();
     }
 }
 

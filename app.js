@@ -1,65 +1,63 @@
 const express = require('express');
-const { Server } = require('socket.io');
 const handlebars = require('express-handlebars');
 const path = require('path');
+const { Server } = require('socket.io');
+const { connectDB } = require('./src/config/db');
+
 const app = express();
-
-const productosRouter = require('./src/routes/products.router.js');
-const carritosRouter = require('./src/routes/carts.router.js');
-const viewsRouter = require('./src/routes/views.router.js');
-
-const PORT = 8080;
-
-app.engine('handlebars', handlebars.engine());
-app.set('views', path.join(__dirname, 'src/views'));
-app.set('view engine', 'handlebars');
+const PORT = process.env.PORT || 8080;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'src/public')));
+app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', viewsRouter);
-app.use('/api/products', productosRouter);
-app.use('/api/carts', carritosRouter);
+app.engine('handlebars', handlebars.engine({
+    helpers: {
+        multiply: function(a, b) {
+            return a * b;
+        },
+        range: function(start, end) {
+            const result = [];
+            for (let i = start; i <= end; i++) {
+                result.push(i);
+            }
+            return result;
+        },
+        eq: function(a, b) {
+            return a === b;
+        }
+    }
+}));
 
-app.use('*', (req, res) => {
-    res.status(404).json({ error: 'Ruta no encontrada' });
-});
+app.set('views', path.join(__dirname, 'src/views'));
+app.set('view engine', 'handlebars');
 
-app.use((err, req, res, next) => {
-    res.status(500).json({ error: 'Error interno del servidor' });
-});
+connectDB();
+
+app.use('/api/products', require('./src/routes/products.router'));
+app.use('/api/carts', require('./src/routes/carts.router'));
 
 const httpServer = app.listen(PORT, () => {
-    console.log(`Servidor activo en http://localhost:${PORT}`);
+    console.log(`Servidor corriendo en puerto ${PORT}`);
 });
 
 const io = new Server(httpServer);
+const ProductManager = require('./src/managers/ProductManager');
+const productManager = new ProductManager();
 
-io.on('connection', async (socket) => {
-    const ProductManager = require('./src/managers/ProductManager');
-    const productManager = new ProductManager('./data/products.json');
-    
-    const products = await productManager.getProducts();
-    socket.emit('updateProducts', products);
-    
-    socket.on('addProduct', async (productData) => {
-        try {
-            await productManager.addProduct(productData);
-            const updatedProducts = await productManager.getProducts();
-            io.emit('updateProducts', updatedProducts);
-        } catch (error) {
-            socket.emit('error', { message: error.message });
-        }
+io.on('connection', socket => {
+    socket.on('addProduct', async product => {
+        await productManager.addProduct(product);
+        io.emit('updateProducts', await productManager.getProducts());
     });
-    
-    socket.on('deleteProduct', async (productId) => {
-        try {
-            await productManager.deleteProduct(productId);
-            const updatedProducts = await productManager.getProducts();
-            io.emit('updateProducts', updatedProducts);
-        } catch (error) {
-            socket.emit('error', { message: error.message });
-        }
+
+    socket.on('deleteProduct', async id => {
+        await productManager.deleteProduct(id);
+        io.emit('updateProducts', await productManager.getProducts());
     });
+});
+
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ error: 'Algo salió mal!' });
 }); 

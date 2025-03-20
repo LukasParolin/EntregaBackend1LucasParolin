@@ -1,8 +1,8 @@
 <h1>Lista de Productos</h1>
 
 <div class="row">
-    {{#if products.length}}
-        {{#each products}}
+    {{#if products.payload.length}}
+        {{#each products.payload}}
             <div class="col-md-4 mb-4">
                 <div class="card">
                     <div class="card-body">
@@ -11,7 +11,8 @@
                         <p class="card-text"><strong>Precio:</strong> ${{this.price}}</p>
                         <p class="card-text"><strong>Categoría:</strong> {{this.category}}</p>
                         <p class="card-text"><strong>Stock:</strong> {{this.stock}}</p>
-                        <p class="card-text"><small class="text-muted">ID: {{this.id}}</small></p>
+                        <p class="card-text"><small class="text-muted">ID: {{this._id}}</small></p>
+                        <a href="/products/{{this._id}}" class="btn btn-primary">Ver Detalles</a>
                     </div>
                 </div>
             </div>
@@ -21,4 +22,32 @@
             <p class="text-center">No hay productos disponibles.</p>
         </div>
     {{/if}}
-</div> 
+</div>
+
+{{#if products.totalPages}}
+<div class="row mt-4">
+    <div class="col-12">
+        <nav aria-label="Navegación de páginas">
+            <ul class="pagination justify-content-center">
+                {{#if products.hasPrevPage}}
+                    <li class="page-item">
+                        <a class="page-link" href="/?page={{products.prevPage}}&limit={{products.limit}}">Anterior</a>
+                    </li>
+                {{/if}}
+                
+                {{#each (range 1 products.totalPages)}}
+                    <li class="page-item {{#if (eq this ../products.page)}}active{{/if}}">
+                        <a class="page-link" href="/?page={{this}}&limit={{../products.limit}}">{{this}}</a>
+                    </li>
+                {{/each}}
+
+                {{#if products.hasNextPage}}
+                    <li class="page-item">
+                        <a class="page-link" href="/?page={{products.nextPage}}&limit={{products.limit}}">Siguiente</a>
+                    </li>
+                {{/if}}
+            </ul>
+        </nav>
+    </div>
+</div>
+{{/if}} 
